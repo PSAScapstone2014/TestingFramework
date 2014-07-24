@@ -17,6 +17,7 @@ else:
 
     for line in file:
         print line
+        time.sleep(.5)
         s.send(line),
     
     data = s.recv(1024)
