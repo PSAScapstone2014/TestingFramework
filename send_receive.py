@@ -29,7 +29,7 @@ print 'Received', repr(data)
 
 # Send recieved data to port 2(output)
 o = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#o.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+o.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 o.bind((HOST, PORT2))
 o.listen(1)
 conn, addr = o.accept()
@@ -38,4 +38,3 @@ print 'Connected by', addr
 conn.send(data)
 conn.close()
 o.close()
-addr.close()
