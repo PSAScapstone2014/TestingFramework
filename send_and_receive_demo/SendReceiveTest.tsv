@@ -1,0 +1,4 @@
+"* Setting *"	"* Value *"
+Library	SendReceiveLibrary.py
+"* Test Case *"	"* Action *"	"* Argument *"	"* Argument *"	"* Argument *"
+Send and receive data from a ChibiOs serial app	Send And Receive	27010	data.txt	ch
