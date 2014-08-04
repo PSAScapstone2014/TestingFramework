@@ -2,8 +2,28 @@ import socket
 import time
 import subprocess
 import csv
+import thread
 
 class SendReceiveLibrary:
+	def send_thread(self, fileName, fileDesc):
+		conn1 = socket.fromfd(fileDesc, socket.AF_INET, socket.SOCK_STREAM)
+		try:
+    			file = open(fileName,"rb")
+			file = csv.reader(file, delimiter = '\t')
+		except IOError:
+    			print "File Name " + fileName + " not found"
+		else:
+			lastTime = 0.0
+			for row in file:
+				newTime = float(row[1])
+				if ((newTime - lastTime) > 0.0):
+					print "time to wait: ", (newTime - lastTime), " seconds"
+					time.sleep(newTime - lastTime) 
+        			conn1.send(row[0])
+				lastTime = float(row[1])
+				print "sent: ", row[0]
+			conn1.send("EOF")
+
 
 	def send_and_receive(self, port1, port2, fileName, *apps):
 		HOST = ''    		  
@@ -30,19 +50,13 @@ class SendReceiveLibrary:
 			addr2 = addr1
 		print "connection 1 accepted on: ", addr1
 		print "connection 2 accepted on: ", addr2
-		try:
-		    	file = open(fileName,"rb")
-			file = csv.reader(file, delimiter = '\t')
-		except IOError:
-    			print "File Name " + fileName + " not found"
-		else:
-
-    			for row in file:
-        			conn1.send(row[0])
-				print "sent: ", row[0]
-				dataChunk = conn2.recv(1024)
-				print "received: ", dataChunk
-				data += dataChunk
+		thread.start_new_thread(self.send_thread, (fileName, conn1.fileno()))
+		while (1):
+			dataChunk = conn2.recv(1024)
+			if (dataChunk == "EOF"):
+				break
+			print "received: ", dataChunk
+			data += dataChunk
 		for app in activeApps:		
 			app.terminate()
 		conn1.close()
