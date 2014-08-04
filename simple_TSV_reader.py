@@ -2,7 +2,7 @@
 # Echo client program
 #import socket
 import time
-
+i=[]
 
 try:
     fname = raw_input("Enter name of data file: ")
@@ -12,11 +12,11 @@ except IOError:
 else:
 
     for line in file:
-
-        i= line.split()
+	l=line        
+	i= l.split("\t")
 	print i[0]
 	print i[1]
-        time.sleep(.5)
+        time.sleep(.05)
  #       s.send(line),
     
 
