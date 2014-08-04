@@ -31,19 +31,21 @@ else:
     print p[1]
     timewait=float(p[1])	
 
-    for line in file:
-	print line
-	time.sleep(timewait)
+HOST = ''# The remote host
+try:
+	s= socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s.connect((HOST, outPort))
+except:
+	print "Connection Failed."
+else:
+	for line in file:
+		print line
+		time.sleep(timewait)
+		s.send(line)
+try:
+	data = s.recv(inPort)
+    	s.close()
+    	print 'Received', data
+except:
+	print "Receive Error."
 
-
-       
-# s.send(line),
-
-#HOST = ''    		  # The remote host
-#PORT = 50007              # The same port as used by the server
-#s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#s.connect((HOST, PORT))
-    
- #   data = s.recv(1024)
- #   s.close()
- #   print 'Received', data
