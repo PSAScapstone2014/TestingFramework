@@ -3,8 +3,14 @@ import time
 import subprocess
 import csv
 import thread
+from collections import defaultdict
 
 class SendReceiveLibrary:
+	def add_data_to_driver(self, data, dataChunk, driver):
+		
+		data[driver].append(dataChunk)
+		return data
+		
 	def sim_format(self, lld, data):
   		return '%s\t%s\n' % (lld , data.encode('hex'))
 
@@ -25,13 +31,13 @@ class SendReceiveLibrary:
 
 	def send_and_receive(self, port, fileName, *apps):
 		HOST = ''    		  
-		PORT = int(port)
-		data = ""              
+		PORT = int(port)           
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		s.bind((HOST, PORT))
 		s.listen(1)
 		activeApps = []
+		data = defaultdict(list)
 		for appName in apps:
 			activeApps.append(subprocess.Popen(appName))
 		conn, addr = s.accept()
@@ -44,7 +50,7 @@ class SendReceiveLibrary:
 			if (dataChunk == "EOF"):
 				break
 			print "received: ", dataChunk, " from ", header
-			data += dataChunk
+			data = self.add_data_to_driver(data, dataChunk, header)
 		for app in activeApps:		
 			app.terminate()
 		conn.close()
@@ -52,12 +58,15 @@ class SendReceiveLibrary:
 		return data
 
 	def echo_test(self, data, fileName):
+		dataString = ""
     		file = open(fileName,"rb")
 		file = csv.reader(file, delimiter = '\t')
 		fileContent = ""
 		for row in file:
 			fileContent += row[0]
-		if not fileContent == data:
+		for dataChunk in data['SD1_IO']:
+			dataString += dataChunk
+		if not fileContent == dataString:
 			raise AssertionError("Data sent did not match data received")
 		else:
 			print "Test passed!"
