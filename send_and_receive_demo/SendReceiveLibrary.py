@@ -14,7 +14,7 @@ class SendReceiveLibrary:
 	def sim_format(self, lld, data):
   		return '%s\t%s\n' % (lld , data.encode('hex'))
 
-	def send_to_serial(self, fileName, fileDesc):
+	def send_to_driver(self, fileName, fileDesc, driver):
 		conn = socket.fromfd(fileDesc, socket.AF_INET, socket.SOCK_STREAM)
     		file = open(fileName,"rb")
 		file = csv.reader(file, delimiter = '\t')
@@ -24,10 +24,10 @@ class SendReceiveLibrary:
 			if ((newTime - lastTime) > 0.0):
 				print "time to wait: ", (newTime - lastTime), " seconds"
 				time.sleep(newTime - lastTime) 
-        		conn.send(self.sim_format('SD1_IO', row[0]))
+        		conn.send(self.sim_format(driver, row[0]))
 			lastTime = newTime
-			print "sent: ", row[0], " to SD1_IO"
-		conn.send(self.sim_format('SD1_IO', "EOF"))
+			print "sent: ", row[0], " to ", driver
+		conn.send(self.sim_format(driver, "EOF"))
 
 	def send_and_receive(self, port, fileName, *apps):
 		HOST = ''    		  
@@ -42,7 +42,7 @@ class SendReceiveLibrary:
 			activeApps.append(subprocess.Popen(appName))
 		conn, addr = s.accept()
 		print "connection accepted on: ", addr
-		thread.start_new_thread(self.send_to_serial, (fileName, conn.fileno()))
+		thread.start_new_thread(self.send_to_driver, (fileName, conn.fileno(), 'SD1_IO'))
 		while (1):
 			message = conn.recv(1024)
       			header, code = message.strip().split('\t', 1)
