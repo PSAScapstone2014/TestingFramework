@@ -14,7 +14,7 @@ class SendReceiveLibrary:
 	def sim_format(self, lld, data):
   		return '%s\t%s\n' % (lld , data.encode('hex'))
 
-	def send_to_driver(self, fileName, fileDesc, driver):
+	def send_to_driver(self, fileName, fileDesc, driver, lock):
 		conn = socket.fromfd(fileDesc, socket.AF_INET, socket.SOCK_STREAM)
     		file = open(fileName,"rb")
 		file = csv.reader(file, delimiter = '\t')
@@ -23,34 +23,49 @@ class SendReceiveLibrary:
 			newTime = float(row[1])
 			if ((newTime - lastTime) > 0.0):
 				print "time to wait: ", (newTime - lastTime), " seconds"
-				time.sleep(newTime - lastTime) 
+				time.sleep(newTime - lastTime)
         		conn.send(self.sim_format(driver, row[0]))
 			lastTime = newTime
 			print "sent: ", row[0], " to ", driver
-		conn.send(self.sim_format(driver, "EOF"))
+		conn.send(self.sim_format(driver, "end"))
 
 	def send_and_receive(self, port, fileName, *apps):
 		HOST = ''    		  
-		PORT = int(port)           
+		PORT = int(port)
+		lock = thread.allocate_lock()           
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		s.bind((HOST, PORT))
 		s.listen(1)
+		filesToRead = 0
 		activeApps = []
 		data = defaultdict(list)
+
 		for appName in apps:
-			activeApps.append(subprocess.Popen(appName))
+			activeApps.append(subprocess.Popen(appName, stdout=subprocess.PIPE))
+
 		conn, addr = s.accept()
 		print "connection accepted on: ", addr
-		thread.start_new_thread(self.send_to_driver, (fileName, conn.fileno(), 'SD1_IO'))
+
+		file = open(fileName,"rb")
+		file = csv.reader(file, delimiter = '\t')
+		for row in file:
+			thread.start_new_thread(self.send_to_driver, (row[0], conn.fileno(), row[1], lock))
+			filesToRead += 1
 		while (1):
 			message = conn.recv(1024)
       			header, code = message.strip().split('\t', 1)
       			dataChunk = code.decode('hex')
-			if (dataChunk == "EOF"):
-				break
+			if (dataChunk == "end"):
+				filesToRead -= 1
+				print "files left: ", filesToRead
+				if (filesToRead <= 0):
+					print "ending..."
+					break
+			else:
+				data = self.add_data_to_driver(data, dataChunk, header)
 			print "received: ", dataChunk, " from ", header
-			data = self.add_data_to_driver(data, dataChunk, header)
+			
 		for app in activeApps:		
 			app.terminate()
 		conn.close()
