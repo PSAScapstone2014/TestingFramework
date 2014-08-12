@@ -9,7 +9,7 @@ class SendReceiveLibrary:
 	def sim_format(self, lld, data):
   		return '%s\t%s\n' % (lld , data.encode('hex'))
 
-	def send_to_driver(self, fileName, fileDesc, driver, lock):
+	def send_to_driver(self, fileName, fileDesc, driver):
 		conn = socket.fromfd(fileDesc, socket.AF_INET, socket.SOCK_STREAM)
     		file = open(fileName,"rb")
 		file = csv.reader(file, delimiter = '\t')
@@ -26,8 +26,7 @@ class SendReceiveLibrary:
 
 	def send_and_receive(self, port, fileName, *apps):
 		HOST = ''    		  
-		PORT = int(port)
-		lock = thread.allocate_lock()           
+		PORT = int(port)          
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		s.bind((HOST, PORT))
@@ -45,7 +44,7 @@ class SendReceiveLibrary:
 		file = open(fileName,"rb")
 		file = csv.reader(file, delimiter = '\t')
 		for row in file:
-			thread.start_new_thread(self.send_to_driver, (row[0], conn.fileno(), row[1], lock))
+			thread.start_new_thread(self.send_to_driver, (row[0], conn.fileno(), row[1]))
 			filesToRead += 1
 		while (1):
 			message = conn.recv(1024)
