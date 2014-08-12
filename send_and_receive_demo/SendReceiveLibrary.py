@@ -5,12 +5,7 @@ import csv
 import thread
 from collections import defaultdict
 
-class SendReceiveLibrary:
-	def add_data_to_driver(self, data, dataChunk, driver):
-		
-		data[driver].append(dataChunk)
-		return data
-		
+class SendReceiveLibrary:		
 	def sim_format(self, lld, data):
   		return '%s\t%s\n' % (lld , data.encode('hex'))
 
@@ -58,12 +53,11 @@ class SendReceiveLibrary:
       			dataChunk = code.decode('hex')
 			if (dataChunk == "end"):
 				filesToRead -= 1
-				print "files left: ", filesToRead
 				if (filesToRead <= 0):
 					print "ending..."
 					break
 			else:
-				data = self.add_data_to_driver(data, dataChunk, header)
+				data[header].append(dataChunk)
 			print "received: ", dataChunk, " from ", header
 			
 		for app in activeApps:		
