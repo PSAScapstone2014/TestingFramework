@@ -1,0 +1,11 @@
+* Setting *	* Value *					
+Library	SendReceiveLibrary.py
+* Variables *	* Value *	* Value *	* Value *	* Value *
+${ARGS}	./
+${APP}	${ARGS}serialTest
+@{DRIVERS}	SD1_IO
+@{DATA_FILES}	SendReceiveData.tsv
+${PORT}	27000
+* Test Case *	* Action *	* Argument *	* Argument *	* Argument *	* Argument *	* Argument *
+Send and receive data from ChibiOS	${ret}=	Send And Receive	${PORT}	${DRIVERS}	${DATA_FILES}	${APP}
+	Echo Test	${ret}	SendReceiveData.tsv			
