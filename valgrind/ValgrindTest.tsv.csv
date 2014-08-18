@@ -1,0 +1,5 @@
+* Setting *	* Value *		
+Library	vbTest.py		
+* Test Case *	* Action *	* Argument *	* Argument *
+Send and receive data from a ChibiOs serial app	${ret}=	vc	vclog.txt
+	Echo Test	${ret}	vclog.txt
