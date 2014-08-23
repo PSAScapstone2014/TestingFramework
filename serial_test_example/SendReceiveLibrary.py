@@ -5,6 +5,7 @@ import csv
 import thread
 import itertools
 import shlex
+import threading
 from collections import defaultdict
 
 # This is a helper funtion that formats data for the ChibiOS protocol
@@ -38,34 +39,37 @@ def send_to_driver(fileName, fileDesc, driver):
 			print "time to wait: ", (newTime - lastTime), " seconds"
 			time.sleep(newTime - lastTime)
 
-        	conn.send(sim_format(driver, row[0]))
+        	conn.sendall(sim_format(driver, row[0]))
 		lastTime = newTime
 		print "sent: ", row[0], " to ", driver
 
-	conn.send(sim_format(driver, "end"))
 
+#Class that represents keywords usable in the test table.
 class SendReceiveLibrary:		
 
 # This method represents a keyword that can be used in the test table. This keyword starts up a
 # chibiOS application, sends data to the app, receives data that the app outputs, and finally
 # closes the app. The file in dataFiles must have the same index as the driver it needs to be
 # sent to in drivers.
-# @param port	The port used for ChibiOS input and output simulation
+# @param simioPort	The port used for ChibiOS input and output simulation
 # @param drivers	A list of the drivers used in the application that receive data
 # @param dataFiles	A list of data files to be sent to drivers that receive data
 # @param arguments	The arguments used to execute the ChibiOs application
 # @return	A dictionary that associates the names of low-level drivers to the data they sent
-	def send_and_receive(self, port, drivers, dataFiles, arguments):
+	def send_and_receive(self, simioPort, drivers, dataFiles, arguments):
 		args = shlex.split(arguments)
 		HOST = ''    		  
-		PORT = int(port)          
+		PORT = int(simioPort)
+          
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		s.bind((HOST, PORT))
 		s.listen(1)
-		filesToRead = 0
+
 		activeApps = []
 		data = defaultdict(list)
+		dataBuffer = ""
+		sendThread = []
 
 		activeApps.append(subprocess.Popen(args, stdout=subprocess.PIPE))
 
@@ -73,23 +77,92 @@ class SendReceiveLibrary:
 		print "connection accepted on: ", addr
 
 		for driver, dataFile in itertools.izip(drivers, dataFiles):
-			thread.start_new_thread(send_to_driver, (dataFile, conn.fileno(), driver))
-			filesToRead += 1
+			newThread = threading.Thread(target=send_to_driver, args=(dataFile, conn.fileno(), driver))
+    			newThread.start()
+			sendThread.append(newThread)
 
 		while (1):
-			message = conn.recv(1024)
-      			header, code = message.strip().split('\t', 1)
+			dataBuffer += conn.recv(1024)
+			if (threading.activeCount() <= 1):
+				break
+		
+		lines = dataBuffer.split('\n')
+		for line in lines:
+			try:	
+      				header, code = line.strip().split('\t', 1)
+			except:
+				break
       			dataChunk = code.decode('hex')
-
-			if (dataChunk == "end"):
-				filesToRead -= 1
-				if (filesToRead <= 0):
-					print "ending..."
-					break
-			else:
-				data[header].append(dataChunk)
-
+			data[header].append(dataChunk)
 			print "received: ", dataChunk, " from ", header
+			
+		for app in activeApps:		
+			app.terminate()
+
+		conn.close()
+		s.close()
+		return data
+
+# This method is the same as send_and_receive except is collects data from an outgoing lwip
+# connection as well as that from the drivers.
+# @param simioPort	The port used for ChibiOS input and output simulation
+# @param drivers	A list of the drivers used in the application that receive data
+# @param dataFiles	A list of data files to be sent to drivers that receive data
+# @param lwipPort	The port being connected to by the ChibiOS for outgoing lwip data
+# @param lwipAddress	The address being connected to by ChibiOS for outgoing lwip data
+# @param arguments	The arguments used to execute the ChibiOs application
+# @return	A dictionary that associates the names of low-level drivers to the data they sent
+	def send_and_receive_with_lwip(self, simioPort, drivers, dataFiles, lwipPort, lwipAddress, arguments):
+		args = shlex.split(arguments)
+		HOST = ''    		  
+		PORT = int(simioPort)
+		LWIPPORT = int(lwipPort)
+          
+		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+		s.bind((HOST, PORT))
+		s.listen(1)
+
+		lwipSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		lwipSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+		lwipSocket.bind((lwipAddress, LWIPPORT))
+
+		activeApps = []
+		data = defaultdict(list)
+		dataBuffer = ""
+		lwipDataBuffer = ""
+		sendThread = []
+
+		activeApps.append(subprocess.Popen(args, stdout=subprocess.PIPE))
+
+		conn, addr = s.accept()
+		print "connection accepted on: ", addr
+
+		for driver, dataFile in itertools.izip(drivers, dataFiles):
+			newThread = threading.Thread(target=send_to_driver, args=(dataFile, conn.fileno(), driver))
+    			newThread.start()
+			sendThread.append(newThread)
+
+		while (1):
+			dataBuffer += conn.recv(1024)
+			lwipDataBuffer += lwipSocket.recv(1024) + "\n"
+			if (threading.activeCount() <= 1):
+				break
+		
+		lines = dataBuffer.split('\n')
+		for line in lines:
+			try:	
+      				header, code = line.strip().split('\t', 1)
+			except:
+				break
+      			dataChunk = code.decode('hex')
+			data[header].append(dataChunk)
+			print "received: ", dataChunk, " from ", header
+
+		lines = lwipDataBuffer.split('\n')
+		for line in lines:
+			data['lwip'].append(line)
+			print "received: ", line, " from lwip"
 			
 		for app in activeApps:		
 			app.terminate()
