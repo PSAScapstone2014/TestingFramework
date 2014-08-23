@@ -1,0 +1,13 @@
+import socket
+import time
+import subprocess
+import csv
+import thread
+from collections import defaultdict
+
+filename = "frederica.txt"
+file="vc"
+subProcess.call("valgrind /.", file, stderr=filename
+
+		
+
