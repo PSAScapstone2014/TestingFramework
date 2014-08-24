@@ -1,0 +1,13 @@
+* Setting *	* Value *					
+Library	SendReceiveLibrary.py
+* Variables *	* Value *	* Value *
+${ARGS}	./
+${APP}	${ARGS}ch.elf
+@{DRIVERS}	SD1_IO
+@{DATA_FILES}	SendReceiveData.tsv
+${PORT}	27000
+${LWIP_PORT}	36000
+${LWIP_ADDRESS}	127.0.0.10
+* Test Case *	* Action *	* Argument *	* Argument *	* Argument *	* Argument *	* Argument *	* Argument *	* Argument *
+Send and receive data from ChibiOS	${ret}=	Send And Receive With Lwip	${PORT}	${DRIVERS}	${DATA_FILES}	${LWIP_PORT}	${LWIP_ADDRESS}	${APP}
+	Gps Echo Test	${ret}	SendReceiveData.tsv
